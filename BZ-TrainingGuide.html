@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cycle-Synced Training Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #FAF8F5;
+    color: #1a1a1a;
+    padding: 24px 16px 60px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .phase-btn { cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; }
+  .phase-btn:hover { opacity: 0.88; }
+  .day-card { transition: border-color 0.15s; }
+  .day-card:hover { border-color: #bbb !important; }
+  @media (max-width: 520px) {
+    .phase-grid { grid-template-columns: 1fr !important; }
+    .macro-grid { grid-template-columns: 1fr !important; }
+    .day-badges { flex-direction: row !important; flex-wrap: wrap; justify-content: flex-start !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState } = React;
+
+const ANCHOR = new Date("2026-04-20T00:00:00");
+const CYCLE_LENGTH = 26;
+
+function getCycleDay(date) {
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const a = new Date(ANCHOR); a.setHours(0,0,0,0);
+  const diff = Math.floor((d - a) / 86400000);
+  return ((diff % CYCLE_LENGTH) + CYCLE_LENGTH) % CYCLE_LENGTH + 1;
+}
+
+function getPhaseId(day) {
+  if (day <= 5)  return "menstruation";
+  if (day <= 13) return "follicular";
+  if (day <= 15) return "ovulation";
+  return "luteal";
+}
+
+function getNextPeriodDate(today, cycleDay) {
+  const daysUntil = cycleDay === 1 ? 0 : CYCLE_LENGTH - cycleDay + 1;
+  const next = new Date(today); next.setHours(0,0,0,0);
+  next.setDate(next.getDate() + daysUntil);
+  return next;
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString("en-US", { month:"short", day:"numeric" });
+}
+
+const phases = [
+  {
+    id:"menstruation", name:"Menstruation", label:"Day 1–5",
+    fill:"#FAECE7", accent:"#D85A30", text:"#993C1D",
+    tagline:"Rest, restore, and nourish",
+    trainingNote:"Honor your body. Keep intensity low days 1–2. Light gym work is fine on days 3–5 if energy allows. Walking replaces running. Skip soccer on heavy-flow days. Gentle swimming can actually feel great — the water supports the body and eases cramps.",
+    nutritionNote:"Iron-rich foods to replenish losses. Anti-inflammatory fats (omega-3s, avocado). Warm, comforting complex carbs. Reduce caffeine and processed sugar.",
+    week:[
+      {day:"Mon", activity:"Walk or gentle yoga",           intensity:"rest",     macro:"Low carb + anti-inflam",  foods:"Leafy greens, salmon, lentils, warm quinoa"},
+      {day:"Tue", activity:"Gentle swim or rest",           intensity:"low",      macro:"Low carb + high fiber",   foods:"Bone broth, roasted veg, small square dark chocolate"},
+      {day:"Wed", activity:"Light gym (skip soccer)",       intensity:"low",      macro:"Moderate carb",           foods:"Brown rice, chicken, spinach, berries"},
+      {day:"Thu", activity:"Walk — active recovery",        intensity:"rest",     macro:"Low carb + high fiber",   foods:"Sweet potato, eggs, leafy greens, nuts"},
+      {day:"Fri", activity:"Gym — light functional",        intensity:"low",      macro:"Moderate carb",           foods:"Oats, fish or tempeh, cruciferous veg"},
+      {day:"Sat", activity:"Easy run or walk",              intensity:"low",      macro:"Moderate carb",           foods:"Banana, almond butter, whole grain toast"},
+      {day:"Sun", activity:"Easy swim or rest",             intensity:"low",      macro:"Low carb + high fiber",   foods:"Salads, legumes, healthy fats, herbal tea"},
+    ]
+  },
+  {
+    id:"follicular", name:"Follicular", label:"Day 6–13",
+    fill:"#E1F5EE", accent:"#1D9E75", text:"#0F6E56",
+    tagline:"Energy rising — build and explore",
+    trainingNote:"Estrogen is climbing and so is your drive. A great window to push gym intensity, attempt harder runs, and show up to soccer with full effort. Swimming becomes a powerful active recovery tool between hard days. Apply minimum effective dose thinking — don't burn everything in one session.",
+    nutritionNote:"Standard carb cycling applies beautifully here. Earn your carbs on training days. Lean protein and complex carbs are your foundation. Keep it clean and fueled.",
+    week:[
+      {day:"Mon", activity:"Gym — strength",                intensity:"high",     macro:"Moderate-high carb",      foods:"Rice or potatoes, chicken or tofu, roasted veg, fruit"},
+      {day:"Tue", activity:"Swim — moderate effort",        intensity:"moderate", macro:"Moderate carb",           foods:"Oats pre-swim, eggs + greens post"},
+      {day:"Wed", activity:"Soccer",                        intensity:"high",     macro:"High carb day",           foods:"Pasta or rice 2–3hrs pre, banana, protein + carbs post"},
+      {day:"Thu", activity:"Walk — active recovery",        intensity:"low",      macro:"Low carb + high fiber",   foods:"Salad, legumes, avocado, leafy greens"},
+      {day:"Fri", activity:"Gym — functional",              intensity:"high",     macro:"Moderate-high carb",      foods:"Sweet potato, lean protein, colorful veg"},
+      {day:"Sat", activity:"Run — longer/moderate",         intensity:"moderate", macro:"Moderate carb",           foods:"Toast + nut butter pre, chicken + veg post"},
+      {day:"Sun", activity:"Swim — recovery pace",          intensity:"low",      macro:"Low carb + high fiber",   foods:"Light salad, nuts, seeds, fiber-rich veg"},
+    ]
+  },
+  {
+    id:"ovulation", name:"Ovulation", label:"Day 14–15",
+    fill:"#FAEEDA", accent:"#BA7517", text:"#854F0B",
+    tagline:"Peak power — go for it",
+    trainingNote:"Your strongest window. Testosterone and estrogen peak together. Schedule your hardest soccer game, fastest run, or heaviest lift here. Use swimming between peak sessions as active recovery — it keeps the body moving without taxing the nervous system.",
+    nutritionNote:"Your body uses carbs most efficiently right now. Time complex carbs around your hardest sessions. Keep protein high to match your elevated output. Don't undereat on peak training days.",
+    week:[
+      {day:"Mon", activity:"Gym — heavy strength",          intensity:"high",     macro:"High carb",               foods:"Rice or pasta, lean protein, colorful veg, fruit"},
+      {day:"Tue", activity:"Swim — build effort",           intensity:"moderate", macro:"Moderate-high carb",      foods:"Oats + banana pre, eggs + sweet potato post"},
+      {day:"Wed", activity:"Soccer — peak performance",     intensity:"high",     macro:"High carb day",           foods:"Complex carbs 2–3hrs pre, carbs + protein post"},
+      {day:"Thu", activity:"Walk — active recovery",        intensity:"low",      macro:"Moderate carb + fiber",   foods:"Grains, avocado, lentils, light salad"},
+      {day:"Fri", activity:"Gym — power + functional",      intensity:"high",     macro:"Moderate-high carb",      foods:"Quinoa, salmon, roasted sweet potato"},
+      {day:"Sat", activity:"Run — push it",                 intensity:"high",     macro:"Moderate-high carb",      foods:"Banana + almond butter pre, protein + fruit post"},
+      {day:"Sun", activity:"Swim — easy recovery",          intensity:"low",      macro:"Low carb + high fiber",   foods:"Veg-heavy plate, legumes, healthy fats, hydrate"},
+    ]
+  },
+  {
+    id:"luteal", name:"Luteal", label:"Day 16–26",
+    fill:"#EEEDFE", accent:"#7F77DD", text:"#534AB7",
+    tagline:"Wind down — nourish deeply",
+    trainingNote:"Early luteal (days 16–20): solid energy, maintain training. Late luteal (days 21–26): progesterone peaks, fatigue and cravings rise. Reduce volume — swimming is ideal here, low impact and mood-regulating. Recovery is training.",
+    nutritionNote:"Honor carb cravings with complex carbs — this is physiology, not weakness. Increase magnesium-rich foods to ease PMS. Keep protein high. Ease up on caffeine in the final days.",
+    week:[
+      {day:"Mon", activity:"Gym — moderate strength",       intensity:"moderate", macro:"Moderate carb + protein", foods:"Oats, chicken, pumpkin seeds (magnesium!), dark greens"},
+      {day:"Tue", activity:"Swim — steady/relaxed",         intensity:"low",      macro:"Moderate carb",           foods:"Banana, almond butter toast, hydrate well"},
+      {day:"Wed", activity:"Soccer (early) or walk (late)", intensity:"moderate", macro:"Moderate carb",           foods:"Complex carbs pre, protein post-game"},
+      {day:"Thu", activity:"Walk — active recovery",        intensity:"low",      macro:"Low carb + high fiber",   foods:"Fiber-rich veg, seeds, lentils, dark chocolate"},
+      {day:"Fri", activity:"Gym — light functional",        intensity:"low",      macro:"Moderate carb",           foods:"Sweet potato, turkey or fish, roasted veg"},
+      {day:"Sat", activity:"Easy run or walk",              intensity:"low",      macro:"Moderate carb",           foods:"Warm whole grains, omega-3 fats, berries"},
+      {day:"Sun", activity:"Swim — gentle or rest",         intensity:"low",      macro:"Low carb + fiber + fats", foods:"Avocado, nuts, legumes, leafy greens, chamomile tea"},
+    ]
+  }
+];
+
+const iConfig = {
+  high:     { label:"High",     color:"#993C1D", bg:"#FAECE7" },
+  moderate: { label:"Moderate", color:"#854F0B", bg:"#FAEEDA" },
+  low:      { label:"Low",      color:"#0F6E56", bg:"#E1F5EE" },
+  rest:     { label:"Rest",     color:"#5F5E5A", bg:"#F1EFE8" },
+};
+
+function getMacroStyle(m) {
+  const ml = m.toLowerCase();
+  if (ml.startsWith("high carb"))    return { color:"#993C1D", bg:"#FAECE7" };
+  if (ml.includes("moderate-high")) return { color:"#854F0B", bg:"#FAEEDA" };
+  if (ml.includes("moderate"))      return { color:"#0F6E56", bg:"#E1F5EE" };
+  return { color:"#534AB7", bg:"#EEEDFE" };
+}
+
+function App() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cycleDay   = getCycleDay(today);
+  const currentId  = getPhaseId(cycleDay);
+  const nextPeriod = getNextPeriodDate(today, cycleDay);
+  const daysUntil  = Math.round((nextPeriod - today) / 86400000);
+  const todayLabel = today.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+
+  const [active, setActive] = useState(currentId);
+  const phase = phases.find(p => p.id === active);
+  const isCurrentPhase = active === currentId;
+
+  return React.createElement("div", null,
+
+    React.createElement("div", { style:{ marginBottom:"6px" } },
+      React.createElement("h1", { style:{ fontSize:"22px", fontWeight:500, margin:"0 0 10px", color:"#1a1a1a" } },
+        "Cycle-synced training guide"
+      ),
+      React.createElement("div", {
+        style:{
+          display:"inline-flex", gap:"16px", flexWrap:"wrap",
+          background:"#EDECE8", borderRadius:"8px",
+          padding:"8px 14px", fontSize:"13px", color:"#666"
+        }
+      },
+        React.createElement("span", null, todayLabel),
+        React.createElement("span", { style:{ color:"#ccc" } }, "|"),
+        React.createElement("span", null,
+          "Cycle day ",
+          React.createElement("strong", { style:{ color:"#1a1a1a", fontWeight:500 } }, cycleDay),
+          " of ", CYCLE_LENGTH
+        ),
+        React.createElement("span", { style:{ color:"#ccc" } }, "|"),
+        React.createElement("span", null,
+          "Next period ",
+          React.createElement("strong", { style:{ color:"#1a1a1a", fontWeight:500 } }, daysUntil === 0 ? "today" : "in " + daysUntil + " days"),
+          daysUntil > 0 ? " (" + fmtDate(nextPeriod) + ")" : ""
+        )
+      )
+    ),
+
+    React.createElement("div", { style:{ display:"flex", gap:"8px", margin:"18px 0", flexWrap:"wrap" } },
+      phases.map(p => {
+        const isCurrent = p.id === currentId;
+        const isActive  = p.id === active;
+        return React.createElement("button", {
+          key: p.id, className:"phase-btn",
+          onClick: () => setActive(p.id),
+          style:{
+            padding:"8px 14px", borderRadius:"8px",
+            border: isActive ? "2px solid "+p.accent : "0.5px solid #ddd",
+            background: isActive ? p.fill : "#fff",
+            color: isActive ? p.text : "#666",
+            fontSize:"13px", fontWeight: isActive ? 500 : 400,
+            display:"flex", flexDirection:"column", alignItems:"flex-start", gap:"2px",
+          }
+        },
+          React.createElement("span", { style:{ fontWeight:500, display:"flex", alignItems:"center", gap:"6px" } },
+            p.name,
+            isCurrent && React.createElement("span", {
+              style:{
+                fontSize:"10px", padding:"1px 6px", borderRadius:"20px",
+                background: p.accent, color:"#fff", fontWeight:500, lineHeight:"16px"
+              }
+            }, "now")
+          ),
+          React.createElement("span", { style:{ fontSize:"11px", opacity:0.75 } }, p.label)
+        );
+      })
+    ),
+
+    !isCurrentPhase && React.createElement("div", {
+      style:{
+        padding:"8px 12px", marginBottom:"12px",
+        background:"#F0EEE9", borderRadius:"8px",
+        fontSize:"12px", color:"#888",
+        display:"flex", alignItems:"center", gap:"6px"
+      }
+    },
+      React.createElement("span", null, "Viewing " + phase.name + " — "),
+      React.createElement("span", {
+        style:{ color:"#1D9E75", cursor:"pointer", fontWeight:500 },
+        onClick: () => setActive(currentId)
+      }, "Back to today (day " + cycleDay + ")")
+    ),
+
+    React.createElement("div", {
+      style:{
+        background:phase.fill, borderRadius:"12px",
+        padding:"16px 18px", marginBottom:"16px",
+        border:"0.5px solid "+phase.accent+"55"
+      }
+    },
+      React.createElement("div", { style:{ display:"flex", gap:"10px", alignItems:"baseline", marginBottom:"8px" } },
+        React.createElement("span", { style:{ fontSize:"15px", fontWeight:500, color:phase.text } }, phase.name),
+        React.createElement("span", { style:{ fontSize:"12px", color:phase.text, opacity:0.75 } }, phase.label)
+      ),
+      React.createElement("p", { style:{ fontSize:"13px", color:phase.text, margin:"0 0 14px", opacity:0.85, fontStyle:"italic" } }, phase.tagline),
+      React.createElement("div", { className:"phase-grid", style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px" } },
+        React.createElement("div", null,
+          React.createElement("p", { style:{ fontSize:"11px", fontWeight:500, color:phase.text, margin:"0 0 4px", letterSpacing:"0.04em" } }, "Training"),
+          React.createElement("p", { style:{ fontSize:"12px", color:phase.text, margin:0, lineHeight:1.55, opacity:0.8 } }, phase.trainingNote)
+        ),
+        React.createElement("div", null,
+          React.createElement("p", { style:{ fontSize:"11px", fontWeight:500, color:phase.text, margin:"0 0 4px", letterSpacing:"0.04em" } }, "Nutrition"),
+          React.createElement("p", { style:{ fontSize:"12px", color:phase.text, margin:0, lineHeight:1.55, opacity:0.8 } }, phase.nutritionNote)
+        )
+      )
+    ),
+
+    React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:"6px" } },
+      phase.week.map(d => {
+        const is = iConfig[d.intensity];
+        const ms = getMacroStyle(d.macro);
+        return React.createElement("div", {
+          key: d.day, className:"day-card",
+          style:{
+            display:"grid", gridTemplateColumns:"40px 1fr auto",
+            gap:"12px", alignItems:"center",
+            padding:"11px 14px", background:"#fff",
+            borderRadius:"8px", border:"0.5px solid #e0e0e0",
+          }
+        },
+          React.createElement("p", { style:{ fontSize:"12px", fontWeight:500, color:"#888", margin:0, letterSpacing:"0.04em" } }, d.day),
+          React.createElement("div", null,
+            React.createElement("p", { style:{ fontSize:"13px", fontWeight:500, color:"#1a1a1a", margin:"0 0 3px" } }, d.activity),
+            React.createElement("p", { style:{ fontSize:"11px", color:"#888", margin:0, lineHeight:1.4 } }, d.foods)
+          ),
+          React.createElement("div", {
+            className:"day-badges",
+            style:{ display:"flex", flexDirection:"column", gap:"4px", alignItems:"flex-end", minWidth:"112px" }
+          },
+            React.createElement("span", { style:{
+              fontSize:"11px", padding:"2px 8px", borderRadius:"20px",
+              background:is.bg, color:is.color, fontWeight:500, whiteSpace:"nowrap"
+            } }, is.label),
+            React.createElement("span", { style:{
+              fontSize:"11px", padding:"2px 8px", borderRadius:"20px",
+              background:ms.bg, color:ms.color, whiteSpace:"nowrap", textAlign:"right"
+            } }, d.macro)
+          )
+        );
+      })
+    ),
+
+    React.createElement("div", { style:{ marginTop:"16px", padding:"14px 16px", background:"#F5F4F0", borderRadius:"8px" } },
+      React.createElement("p", { style:{ fontSize:"11px", fontWeight:500, color:"#888", margin:"0 0 10px", letterSpacing:"0.04em" } }, "Carb strategy"),
+      React.createElement("div", { className:"macro-grid", style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" } },
+        [
+          { label:"High carb",            desc:"Soccer, peak sessions. Earn it with intensity.",        dot:"#D85A30" },
+          { label:"Moderate-high carb",   desc:"Strength days and harder runs. Fuel performance.",      dot:"#BA7517" },
+          { label:"Moderate carb",        desc:"Steady effort. Balance protein + complex carbs.",       dot:"#1D9E75" },
+          { label:"Low carb + high fiber",desc:"Rest and recovery days. Veg, legumes, healthy fats.",  dot:"#7F77DD" },
+        ].map(item =>
+          React.createElement("div", { key:item.label, style:{ display:"flex", gap:"8px", alignItems:"flex-start" } },
+            React.createElement("span", { style:{ width:"8px", height:"8px", borderRadius:"50%", background:item.dot, flexShrink:0, marginTop:"4px" } }),
+            React.createElement("div", null,
+              React.createElement("p", { style:{ fontSize:"12px", fontWeight:500, color:"#1a1a1a", margin:"0 0 1px" } }, item.label),
+              React.createElement("p", { style:{ fontSize:"11px", color:"#888", margin:0 } }, item.desc)
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
